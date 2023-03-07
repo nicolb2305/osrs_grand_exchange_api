@@ -70,7 +70,14 @@ impl Client {
         timestamp: Option<i64>,
     ) -> reqwest::Result<GrandExchangeAverage> {
         let route = timestep.to_string();
-        let params = timestamp.map(|x| vec![("timestamp", x.to_string())]);
+        // Timestamp is rounded down to closest timestamp divisible by timestep
+        let timestep_secs: i64 = timestep.into();
+        let params = timestamp.map(|x| {
+            vec![(
+                "timestamp",
+                ((x / timestep_secs) * timestep_secs).to_string(),
+            )]
+        });
         self.get(&route, params).await
     }
 
@@ -106,6 +113,19 @@ impl Display for Timestep {
             Timestep::OneHour => write!(f, "1h"),
             Timestep::ThreeHours => write!(f, "3h"),
             Timestep::SixHours => write!(f, "6h"),
+        }
+    }
+}
+
+impl From<Timestep> for i64 {
+    fn from(timestep: Timestep) -> Self {
+        match timestep {
+            Timestep::FiveMinutes => 300,
+            Timestep::TenMinutes => 600,
+            Timestep::ThirtyMinutes => 1800,
+            Timestep::OneHour => 3600,
+            Timestep::ThreeHours => 10800,
+            Timestep::SixHours => 21600,
         }
     }
 }
