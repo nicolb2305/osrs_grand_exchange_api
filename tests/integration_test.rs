@@ -29,9 +29,9 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_mappings() {
+    async fn test_mapping() {
         let client = create_client();
-        let mappings = client.mappings().await.unwrap();
+        let mappings = client.mapping().await.unwrap();
         assert_ne!(mappings.len(), 0);
     }
 
@@ -99,7 +99,7 @@ mod tests {
     async fn test_map_mappings_to_latest() {
         let client = create_client();
         let latest = client.grand_exchange_latest(None).await.unwrap();
-        let mappings = client.mappings().await.unwrap();
+        let mappings = client.mapping().await.unwrap();
 
         let item_names_with_latest = mappings
             .iter()

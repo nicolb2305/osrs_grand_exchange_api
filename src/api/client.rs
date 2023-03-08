@@ -4,6 +4,8 @@ use super::data_types::{
 };
 use serde::Deserialize;
 
+/// The client used for interacting with the
+/// [OSRS Grand Exchange real-time prices API](https://oldschool.runescape.wiki/w/RuneScape:Real-time_Prices).
 pub struct Client {
     client: reqwest::Client,
     endpoint: Endpoint,
@@ -34,6 +36,16 @@ pub enum Error {
 type APIResult<T> = Result<T, Error>;
 
 impl Client {
+    /// Creates a client used for interacting with the api.
+    ///
+    /// Please use a descriptive User-Agent such that the wiki admins can reach you in
+    /// case of excessive numbers of calls, or changes to the api, see
+    /// [api documentation](https://oldschool.runescape.wiki/w/RuneScape:Real-time_Prices#Please_set_a_descriptive_User-Agent!).
+    /// ```
+    /// use ge_api::client::{Client, Endpoint};
+    ///
+    /// let client = Client::new(Endpoint::OldSchoolRuneScape, "nicolb2305");
+    /// ```
     pub fn new(endpoint: Endpoint, user_agent: &str) -> Self {
         Client {
             client: reqwest::Client::new(),
@@ -42,11 +54,10 @@ impl Client {
         }
     }
 
-    async fn get<T: for<'a> Deserialize<'a>>(
-        &self,
-        route: &str,
-        query: Option<Vec<(&str, String)>>,
-    ) -> APIResult<T> {
+    async fn get<T>(&self, route: &str, query: Option<Vec<(&str, String)>>) -> APIResult<T>
+    where
+        T: for<'a> Deserialize<'a>,
+    {
         let resp = self
             .client
             .get(format!(
@@ -63,18 +74,65 @@ impl Client {
         }
     }
 
+    /// Queries the [/latest](https://prices.runescape.wiki/api/v1/osrs/latest)
+    /// route of the api, either returns item with specified `item_id`, or all items on
+    /// the Grand Exchange, if specified.
+    /// ```
+    /// # use ge_api::client::{Client, Endpoint};
+    /// use ge_api::data_types::ItemId;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # let client = Client::new(Endpoint::OldSchoolRuneScape, "nicolb2305");
+    /// let all_items = client.grand_exchange_latest(None).await?;
+    /// let cannonball = client.grand_exchange_latest(Some(ItemId(2))).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn grand_exchange_latest(
         &self,
-        id: Option<ItemId>,
+        item_id: Option<ItemId>,
     ) -> APIResult<GrandExchangeLatest> {
-        let params = id.map(|x| vec![("id", x.to_string())]);
+        let params = item_id.map(|x| vec![("id", x.to_string())]);
         self.get("latest", params).await
     }
 
-    pub async fn mappings(&self) -> APIResult<Vec<MappingItem>> {
+    /// Queries the [/mapping](https://prices.runescape.wiki/api/v1/osrs/mapping)
+    /// route of the api, returns a list of all items tradeable on the Grand Exchange.
+    /// ```
+    /// # use ge_api::client::{Client, Endpoint};
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # let client = Client::new(Endpoint::OldSchoolRuneScape, "nicolb2305");
+    /// let mapping = client.mapping().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn mapping(&self) -> APIResult<Vec<MappingItem>> {
         self.get("mapping", None).await
     }
 
+    /// Queries any of the time-duration average endpoints
+    /// (e.g., [/5m](https://prices.runescape.wiki/api/v1/osrs/5m)).
+    ///
+    /// `timestep` determines which endpoint is called, while `timestamp` can optionally
+    /// be used to specify the starting point time window to average over.
+    ///
+    /// __NOTE__: `timestamp` must be divisible by the number of seconds in `timestep`,
+    /// [`round_to_previous_timestamp()`](super::utils::round_to_previous_timestamp) can be used to find the closest
+    /// working `timestamp`.
+    /// ```
+    /// # use ge_api::client::{Client, Endpoint};
+    /// use ge_api::client::Timestep;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # let client = Client::new(Endpoint::OldSchoolRuneScape, "nicolb2305");
+    /// let average_5m = client.average(Timestep::FiveMinutes, None).await?;
+    /// let average_5m_past = client.average(Timestep::FiveMinutes, Some(1678190400)).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn average(
         &self,
         timestep: Timestep,
@@ -85,13 +143,29 @@ impl Client {
         self.get(&route, params).await
     }
 
+    /// Queries the [/timeseries](https://prices.runescape.wiki/api/v1/osrs/timeseries?timestep=5m&id=4151)
+    /// endpoint of the api, returns the price of an item with given `item_id` over
+    /// time, with averaged over a duration of `timestep`.
+    ///
+    /// ```
+    /// # use ge_api::client::{Client, Endpoint};
+    /// use ge_api::client::Timestep;
+    /// use ge_api::data_types::ItemId;
+    ///
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// # let client = Client::new(Endpoint::OldSchoolRuneScape, "nicolb2305");
+    /// let timeseries_cannonball = client.timeseries(ItemId(2), Timestep::FiveMinutes).await?;
+    /// # Ok(())
+    /// # }
+    /// ```
     pub async fn timeseries(
         &self,
-        id: ItemId,
+        item_id: ItemId,
         timestep: Timestep,
     ) -> APIResult<GrandExchangeTimeseries> {
         let params = Some(vec![
-            ("id", id.to_string()),
+            ("id", item_id.to_string()),
             ("timestep", timestep.to_string()),
         ]);
         self.get("timeseries", params).await
