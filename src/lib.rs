@@ -15,3 +15,7 @@ pub mod client {
     pub use crate::api::client::Endpoint;
     pub use crate::api::client::Timestep;
 }
+
+pub mod utils {
+    pub use crate::api::utils::round_to_previous_timestamp;
+}

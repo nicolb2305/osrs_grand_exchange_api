@@ -2,7 +2,11 @@ extern crate ge_api;
 
 #[cfg(test)]
 mod tests {
-    use ge_api::{client::{Client, Endpoint, Timestep}, data_types::ItemId};
+    use ge_api::{
+        client::{Client, Endpoint, Timestep},
+        data_types::ItemId,
+        utils::round_to_previous_timestamp,
+    };
 
     fn create_client() -> Client {
         return Client::new(Endpoint::OldSchoolRuneScape, "nicolb2305");
@@ -44,28 +48,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_average_5m_timestamp() {
-        test_average(Timestep::FiveMinutes, Some(1678190401)).await;
-    }
-
-    #[tokio::test]
     async fn test_average_10m() {
         test_average(Timestep::TenMinutes, None).await;
-    }
-
-    #[tokio::test]
-    async fn test_average_10m_timestamp() {
-        test_average(Timestep::TenMinutes, Some(1678190401)).await;
-    }
-
-    #[tokio::test]
-    async fn test_average_30m() {
-        test_average(Timestep::ThirtyMinutes, None).await;
-    }
-
-    #[tokio::test]
-    async fn test_average_30m_timestamp() {
-        test_average(Timestep::ThirtyMinutes, Some(1678190401)).await;
     }
 
     #[tokio::test]
@@ -74,18 +58,8 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_average_1h_timestamp() {
-        test_average(Timestep::OneHour, Some(1678190401)).await;
-    }
-
-    #[tokio::test]
     async fn test_average_3h() {
         test_average(Timestep::ThreeHours, None).await;
-    }
-
-    #[tokio::test]
-    async fn test_average_3h_timestamp() {
-        test_average(Timestep::ThreeHours, Some(1678190401)).await;
     }
 
     #[tokio::test]
@@ -94,7 +68,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_average_6h_timestamp() {
+    async fn test_average_6h_correct_timestamp() {
+        test_average(Timestep::SixHours, Some(1678190400)).await;
+    }
+
+    #[tokio::test]
+    #[should_panic]
+    async fn test_average_6h_wrong_timestamp() {
         test_average(Timestep::SixHours, Some(1678190401)).await;
     }
 
@@ -102,7 +82,16 @@ mod tests {
     async fn test_timeseries() {
         let cannonball = ItemId(2);
         let client = create_client();
-        let timeseries = client.timeseries(cannonball, Timestep::FiveMinutes).await.unwrap();
+        let timeseries = client
+            .timeseries(cannonball, Timestep::FiveMinutes)
+            .await
+            .unwrap();
         assert_ne!(timeseries.data.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_round_to_previous_timestamp() {
+        let rounded = round_to_previous_timestamp(Timestep::SixHours, 1678190401);
+        assert_eq!(rounded, 1678190400);
     }
 }

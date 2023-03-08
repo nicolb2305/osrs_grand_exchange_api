@@ -62,6 +62,11 @@ pub struct GrandExchangeTimeseriesItem {
     pub low_price_volume: Option<u64>,
 }
 
+#[derive(Deserialize, Debug)]
+pub struct APIError {
+    pub error: String,
+}
+
 impl<'de> Deserialize<'de> for ItemId {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -103,7 +108,7 @@ impl<'de> Deserialize<'de> for ItemId {
             {
                 match id.try_into() {
                     Ok(id) => Ok(ItemId(id)),
-                    Err(_) => Err(E::custom("Failed to cast u64 to i64"))
+                    Err(_) => Err(E::custom("Failed to cast u64 to i64")),
                 }
             }
 
@@ -122,5 +127,13 @@ impl<'de> Deserialize<'de> for ItemId {
 impl fmt::Display for ItemId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0.to_string())
+    }
+}
+
+impl std::error::Error for APIError {}
+
+impl std::fmt::Display for APIError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.error)
     }
 }

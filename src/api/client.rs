@@ -1,8 +1,8 @@
 use super::data_types::{
-    GrandExchangeAverage, GrandExchangeLatest, GrandExchangeTimeseries, ItemId, MappingItem,
+    APIError, GrandExchangeAverage, GrandExchangeLatest, GrandExchangeTimeseries, ItemId,
+    MappingItem,
 };
 use serde::Deserialize;
-use std::fmt::{Display, Formatter, Result};
 
 pub struct Client {
     client: reqwest::Client,
@@ -25,6 +25,14 @@ pub enum Timestep {
     SixHours,
 }
 
+#[derive(Debug)]
+pub enum Error {
+    ReqwestError(reqwest::Error),
+    ResponseError(APIError),
+}
+
+type APIResult<T> = Result<T, Error>;
+
 impl Client {
     pub fn new(endpoint: Endpoint, user_agent: &str) -> Self {
         Client {
@@ -38,8 +46,9 @@ impl Client {
         &self,
         route: &str,
         query: Option<Vec<(&str, String)>>,
-    ) -> reqwest::Result<T> {
-        self.client
+    ) -> APIResult<T> {
+        let resp = self
+            .client
             .get(format!(
                 "https://prices.runescape.wiki/api/v1/{}/{}",
                 self.endpoint, route
@@ -47,20 +56,22 @@ impl Client {
             .query(&query)
             .header(reqwest::header::USER_AGENT, &self.user_agent)
             .send()
-            .await?
-            .json::<T>()
-            .await
+            .await?;
+        match resp.status() {
+            reqwest::StatusCode::OK => Ok(resp.json::<T>().await?),
+            _ => Err(resp.json::<APIError>().await?.into()),
+        }
     }
 
     pub async fn grand_exchange_latest(
         &self,
         id: Option<ItemId>,
-    ) -> reqwest::Result<GrandExchangeLatest> {
+    ) -> APIResult<GrandExchangeLatest> {
         let params = id.map(|x| vec![("id", x.to_string())]);
         self.get("latest", params).await
     }
 
-    pub async fn mappings(&self) -> reqwest::Result<Vec<MappingItem>> {
+    pub async fn mappings(&self) -> APIResult<Vec<MappingItem>> {
         self.get("mapping", None).await
     }
 
@@ -68,16 +79,9 @@ impl Client {
         &self,
         timestep: Timestep,
         timestamp: Option<i64>,
-    ) -> reqwest::Result<GrandExchangeAverage> {
+    ) -> APIResult<GrandExchangeAverage> {
         let route = timestep.to_string();
-        // Timestamp is rounded down to closest timestamp divisible by timestep
-        let timestep_secs: i64 = timestep.into();
-        let params = timestamp.map(|x| {
-            vec![(
-                "timestamp",
-                ((x / timestep_secs) * timestep_secs).to_string(),
-            )]
-        });
+        let params = timestamp.map(|x| vec![("timestamp", x.to_string())]);
         self.get(&route, params).await
     }
 
@@ -85,7 +89,7 @@ impl Client {
         &self,
         id: ItemId,
         timestep: Timestep,
-    ) -> reqwest::Result<GrandExchangeTimeseries> {
+    ) -> APIResult<GrandExchangeTimeseries> {
         let params = Some(vec![
             ("id", id.to_string()),
             ("timestep", timestep.to_string()),
@@ -94,8 +98,8 @@ impl Client {
     }
 }
 
-impl Display for Endpoint {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl std::fmt::Display for Endpoint {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Endpoint::OldSchoolRuneScape => write!(f, "osrs"),
             Endpoint::DeadManReborn => write!(f, "dmm"),
@@ -104,8 +108,8 @@ impl Display for Endpoint {
     }
 }
 
-impl Display for Timestep {
-    fn fmt(&self, f: &mut Formatter) -> Result {
+impl std::fmt::Display for Timestep {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Timestep::FiveMinutes => write!(f, "5m"),
             Timestep::TenMinutes => write!(f, "10m"),
@@ -127,5 +131,28 @@ impl From<Timestep> for i64 {
             Timestep::ThreeHours => 10800,
             Timestep::SixHours => 21600,
         }
+    }
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ReqwestError(err) => write!(f, "{}", err),
+            Self::ResponseError(err) => write!(f, "{}", err),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+impl From<reqwest::Error> for Error {
+    fn from(err: reqwest::Error) -> Self {
+        Error::ReqwestError(err)
+    }
+}
+
+impl From<APIError> for Error {
+    fn from(err: APIError) -> Self {
+        Error::ResponseError(err)
     }
 }
