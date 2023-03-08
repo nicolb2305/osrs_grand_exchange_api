@@ -94,4 +94,20 @@ mod tests {
         let rounded = round_to_previous_timestamp(Timestep::SixHours, 1678190401);
         assert_eq!(rounded, 1678190400);
     }
+
+    #[tokio::test]
+    async fn test_map_mappings_to_latest() {
+        let client = create_client();
+        let latest = client.grand_exchange_latest(None).await.unwrap();
+        let mappings = client.mappings().await.unwrap();
+
+        let item_names_with_latest = mappings
+            .iter()
+            .filter_map(|x| match latest.data.get(&x.id) {
+                Some(data) => Some((&x.name, data)),
+                None => None,
+            });
+
+        assert_ne!(item_names_with_latest.count(), 0);
+    }
 }
