@@ -25,6 +25,7 @@ pub enum Timestep {
     OneHour,
     ThreeHours,
     SixHours,
+    OneDay,
 }
 
 #[derive(Debug)]
@@ -191,6 +192,7 @@ impl std::fmt::Display for Timestep {
             Timestep::OneHour => write!(f, "1h"),
             Timestep::ThreeHours => write!(f, "3h"),
             Timestep::SixHours => write!(f, "6h"),
+            Timestep::OneDay => write!(f, "24h"),
         }
     }
 }
@@ -204,6 +206,7 @@ impl From<Timestep> for i64 {
             Timestep::OneHour => 3600,
             Timestep::ThreeHours => 10800,
             Timestep::SixHours => 21600,
+            Timestep::OneDay => 86400,
         }
     }
 }
