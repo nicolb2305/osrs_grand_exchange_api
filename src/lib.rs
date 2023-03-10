@@ -13,6 +13,7 @@ pub mod data_types {
 pub mod client {
     pub use crate::api::client::Client;
     pub use crate::api::client::Endpoint;
+    pub use crate::api::client::Error;
     pub use crate::api::client::Timestep;
 }
 

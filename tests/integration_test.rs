@@ -4,7 +4,7 @@ extern crate ge_api;
 mod tests {
     use ge_api::{
         client::{Client, Endpoint, Timestep},
-        data_types::ItemId,
+        data_types::{GrandExchangeAverage, ItemId},
         utils::round_to_previous_timestamp,
     };
 
@@ -35,27 +35,34 @@ mod tests {
         assert_ne!(mappings.len(), 0);
     }
 
-    async fn call_average(timestep: Timestep, timestamp: Option<i64>) {
-        let cannonball = ItemId(2);
+    async fn call_average(
+        timestep: Timestep,
+        timestamp: Option<i64>,
+    ) -> Result<GrandExchangeAverage, ge_api::client::Error> {
         let client = create_client();
-        let average = client.get_average(timestep, timestamp).await.unwrap();
-        average.data.get(&cannonball);
+        client.get_average(timestep, timestamp).await
     }
 
     #[tokio::test]
     async fn test_average_6h_no_timestamp() {
-        call_average(Timestep::SixHours, None).await;
+        let cannonball = ItemId(2);
+        let average = call_average(Timestep::SixHours, None).await.unwrap();
+        average.data.get(&cannonball);
     }
 
     #[tokio::test]
     async fn test_average_6h_correct_timestamp() {
-        call_average(Timestep::SixHours, Some(1678190400)).await;
+        let cannonball = ItemId(2);
+        let average = call_average(Timestep::SixHours, Some(1678190400))
+            .await
+            .unwrap();
+        average.data.get(&cannonball);
     }
 
     #[tokio::test]
-    #[should_panic]
     async fn test_average_6h_wrong_timestamp() {
-        call_average(Timestep::SixHours, Some(1678190401)).await;
+        let average = call_average(Timestep::SixHours, Some(1678190401)).await;
+        assert!(average.is_err());
     }
 
     #[tokio::test]
