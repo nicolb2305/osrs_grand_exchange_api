@@ -9,7 +9,7 @@ mod tests {
     };
 
     fn create_client() -> Client {
-        return Client::new(Endpoint::OldSchoolRuneScape, "nicolb2305");
+        Client::new(Endpoint::OldSchoolRuneScape, "nicolb2305")
     }
 
     #[tokio::test]
@@ -53,7 +53,7 @@ mod tests {
     #[tokio::test]
     async fn test_average_6h_correct_timestamp() {
         let cannonball = ItemId(2);
-        let average = call_average(Timestep::SixHours, Some(1678190400))
+        let average = call_average(Timestep::SixHours, Some(1_678_190_400))
             .await
             .unwrap();
         average.data.get(&cannonball);
@@ -61,7 +61,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_average_6h_wrong_timestamp() {
-        let average = call_average(Timestep::SixHours, Some(1678190401)).await;
+        let average = call_average(Timestep::SixHours, Some(1_678_190_401)).await;
         assert!(average.is_err());
     }
 
@@ -78,8 +78,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_round_to_previous_timestamp() {
-        let rounded = round_to_previous_timestamp(Timestep::SixHours, 1678190401);
-        assert_eq!(rounded, 1678190400);
+        let rounded = round_to_previous_timestamp(Timestep::SixHours, 1_678_190_401);
+        assert_eq!(rounded, 1_678_190_400);
     }
 
     #[tokio::test]
@@ -90,10 +90,7 @@ mod tests {
 
         let item_names_with_latest = mappings
             .iter()
-            .filter_map(|x| match latest.data.get(&x.id) {
-                Some(data) => Some((&x.name, data)),
-                None => None,
-            });
+            .filter_map(|x| latest.data.get(&x.id).map(|data| (&x.name, data)));
 
         assert_ne!(item_names_with_latest.count(), 0);
     }

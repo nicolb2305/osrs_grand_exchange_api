@@ -126,7 +126,7 @@ impl<'de> Deserialize<'de> for ItemId {
 
 impl fmt::Display for ItemId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.0.to_string())
+        write!(f, "{}", self.0)
     }
 }
 

@@ -46,6 +46,7 @@ impl Client {
     /// # use ge_api::client::{Client, Endpoint};
     /// let client = Client::new(Endpoint::OldSchoolRuneScape, "nicolb2305");
     /// ```
+    #[must_use]
     pub fn new(endpoint: Endpoint, user_agent: &str) -> Self {
         Client {
             client: reqwest::Client::new(),
@@ -87,6 +88,9 @@ impl Client {
     /// # Ok(())
     /// # }
     /// ```
+    /// # Errors
+    /// An error is returned if the api request cannot be completed, or if the response
+    /// could not be parsed succesfully.
     pub async fn get_latest(&self, item_id: Option<ItemId>) -> APIResult<GrandExchangeLatest> {
         let params = item_id.map(|x| vec![("id", x.to_string())]);
         self.get_endpoint("latest", params).await
@@ -103,6 +107,9 @@ impl Client {
     /// # Ok(())
     /// # }
     /// ```
+    /// # Errors
+    /// An error is returned if the api request cannot be completed, or if the response
+    /// could not be parsed succesfully.
     pub async fn get_mapping(&self) -> APIResult<Vec<MappingItem>> {
         self.get_endpoint("mapping", None).await
     }
@@ -126,6 +133,9 @@ impl Client {
     /// # Ok(())
     /// # }
     /// ```
+    /// # Errors
+    /// An error is returned if the api request cannot be completed, or if the response
+    /// could not be parsed succesfully.
     pub async fn get_average(
         &self,
         timestep: Timestep,
@@ -149,6 +159,9 @@ impl Client {
     /// # Ok(())
     /// # }
     /// ```
+    /// # Errors
+    /// An error is returned if the api request cannot be completed, or if the response
+    /// could not be parsed succesfully.
     pub async fn get_timeseries(
         &self,
         item_id: ItemId,
@@ -203,8 +216,8 @@ impl From<Timestep> for i64 {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::ReqwestError(err) => write!(f, "{}", err),
-            Self::ResponseError(err) => write!(f, "{}", err),
+            Self::ReqwestError(err) => write!(f, "{err}"),
+            Self::ResponseError(err) => write!(f, "{err}"),
         }
     }
 }
